@@ -142,6 +142,7 @@ reboot"
 ##################################################################
 
 
+
 echo "[INFO] setting language variables to solve perls language problem ..."
 echo "export LANGUAGE=en_US.UTF-8 
 export LANG=en_US.UTF-8 
@@ -161,12 +162,14 @@ echo "[INFO] installing tool to listen on file changes ..."
 apt install -y inotify-tools
 
 
-echo "[INFO] installing tool to listen on file changes ..."
+echo "[INFO] installing tool to access sqlite3 database ..."
 apt install -y sqlite3
+
 
 echo "[INFO] getting gitea ..."
 wget -O gitea https://dl.gitea.io/gitea/${GITEA_VERSION}/gitea-${GITEA_VERSION}-linux-amd64
 chmod +x gitea
+
 
 echo "[INFO] verifing gitea ..."
 gpg --keyserver pgp.mit.edu --recv 0x2D9AE806EC1592E2
@@ -264,6 +267,7 @@ chown root:${GITEA_USER_NAME} cert.pem
 
 chmod 640 key.pem
 chmod 644 cert.pem
+
 
 echo "[INFO] moving certificate and key to final detination ..."
 mv key.pem /etc/gitea/
