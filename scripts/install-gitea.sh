@@ -125,15 +125,17 @@ su -c \"cd ~
        cd tmp/
        tar -xzf /home/${GITEA_USER_NAME}/backup*.tar.gz 
        sqlite3 gitea.db < gitea.sql
-       mv gitea-repositories/ /home/${GITEA_USER_NAME}/
-       cp app.ini /etc/gitea/
-       cp gitea.db /var/lib/gitea/data/
-       rm -r /home/${GITEA_USER_NAME}/tmp
-       rm -r /home/${GITEA_USER_NAME}/backup*.tar.gz\" \"${GITEA_USER_NAME}\"
+       mv gitea-repositories/ /home/${GITEA_USER_NAME}/\" \"${GITEA_USER_NAME}\"
+
+cp /home/${GITEA_USER_NAME}/tmp/app.ini /etc/gitea/
+cp /home/${GITEA_USER_NAME}/tmp/gitea.db /var/lib/gitea/data/
+
+rm -r /home/${GITEA_USER_NAME}/tmp
+rm -r /home/${GITEA_USER_NAME}/backup*.tar.gz
 
 chmod 644 /etc/gitea/app.ini
 
-echo \"[INFO] ... done. Rebooting now ...\"
+echo "[INFO] rebooting ..."
 reboot"
 
 
