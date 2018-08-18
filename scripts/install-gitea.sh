@@ -5,7 +5,6 @@
 # CONFIGURATION
 ##################################################################
 
-
 GITEA_USER_NAME="git"
 
 GITEA_VERSION="1.5.0"
@@ -17,6 +16,7 @@ GITEA_BACKUP_NAME="gitbackup"
 # GITEA_BACKUP_EVENT="*/1 *	* * *" # every minute (for testing purpose)
 GITEA_BACKUP_EVENT="* 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
+
 ##################################################################
 # CONFIGURATION
 ##################################################################
@@ -25,7 +25,6 @@ GITEA_BACKUP_EVENT="* 3	* * *" # every day at 03:00 (see https://wiki.ubuntuuser
 ##################################################################
 # VARIABLES
 ##################################################################
-
 
 GITEA_SERVICE_FILE_CONTENT="
 [Unit]
@@ -108,7 +107,8 @@ su -c \"cd ~
        sqlite3 /var/lib/gitea/data/gitea.db .dump >gitea.sql
        cp /etc/gitea/app.ini /home/${GITEA_USER_NAME}
        tar -pcvzf backup-\$(date +'%s').tar.gz gitea-repositories/ gitea.sql app.ini
-       rm gitea.sql\" \"${GITEA_USER_NAME}\"
+       rm gitea.sql
+       rm app.ini\" \"${GITEA_USER_NAME}\"
 
 rm -f /home/${GITEA_BACKUP_NAME}/backup-*
 mv /home/${GITEA_USER_NAME}/backup-* /home/${GITEA_BACKUP_NAME}/"
