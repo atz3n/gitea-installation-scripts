@@ -69,8 +69,7 @@ EDIT_SSH_COMMAND_SCRIPT_CONTENT="
 # To achieve this, a service will be started that activates this script.
 # This script then listens on file changes and adds the requiered GITEA_WORK_DIR=/var/lib/gitea command
 # whenever the authorized_keys file changes.
-while inotifywait -e close_write /home/${GITEA_USER_NAME}/.ssh/authorized_keys; do sed -Ei 's/command="\/usr\/local\/bin\/gitea/command="GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys; done"
-
+while inotifywait /home/${GITEA_USER_NAME}/.ssh/authorized_keys; do sed -Ei 's/command=\"\/usr\/local\/bin\/gitea/command=\"GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys; done"
 
 EDIT_SSH_COMMAND_SERVICE_FILE_CONTENT="
 [Unit]
@@ -135,7 +134,7 @@ rm -r /home/${GITEA_USER_NAME}/backup*.tar.gz
 
 chmod 644 /etc/gitea/app.ini
 
-echo "[INFO] rebooting ..."
+echo \"[INFO] rebooting ...\"
 reboot"
 
 
