@@ -66,10 +66,10 @@ EDIT_SSH_COMMAND_SCRIPT_CONTENT="
 # This file is part of a workaround to enable repository cloning via ssh.
 # An extra command to announce the work directory of gitea is needed inside the 
 # command string of public shh keys (see <gitea user>/.ssh/authorized_keys).
-# To achieve this, a service will be started that listen on changes to the authorized_keys file.
-# Whenever that file changes this script will be activated and the requiered GITEA_WORK_DIR=/var/lib/gitea command
-# will be added.
-sed -Ei 's/command=\"\/usr\/local\/bin\/gitea/command=\"GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys"
+# To achieve this, a service will be started that activates this script.
+# This script then listens on file changes and adds the requiered GITEA_WORK_DIR=/var/lib/gitea command
+# whenever the authorized_keys file changes.
+while inotifywait -e close_write /home/${GITEA_USER_NAME}/.ssh/authorized_keys; do sed -Ei 's/command="\/usr\/local\/bin\/gitea/command="GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys; done"
 
 
 EDIT_SSH_COMMAND_SERVICE_FILE_CONTENT="
@@ -84,7 +84,7 @@ Type=simple
 User=${GITEA_USER_NAME}
 Group=${GITEA_USER_NAME}
 WorkingDirectory=/home/${GITEA_USER_NAME}/
-ExecStart=/home/${GITEA_USER_NAME}/edit-ssh-command.sh
+ExecStart=/bin/bash /home/${GITEA_USER_NAME}/edit-ssh-command.sh
 Restart=always
 Environment=USER=${GITEA_USER_NAME} HOME=/home/${GITEA_USER_NAME}
 
@@ -235,14 +235,7 @@ echo "${GITEA_SERVICE_FILE_CONTENT}">/etc/systemd/system/gitea.service
 
 
 echo "[INFO] creating ssh command edit service ..."
-# this is a WORKAROUND for ssh repository cloning. 
-# An extra command to announce the work directory of gitea is needed inside the 
-# command string of public shh keys (see <gitea user>/.ssh/authorized_keys).
-# To achieve this, a service will be started that listen on changes to the authorized_keys file.
-# Whenever that file is changed it adds the requiered GITEA_WORK_DIR=/var/lib/gitea command.
 echo "${EDIT_SSH_COMMAND_SERVICE_FILE_CONTENT}">/etc/systemd/system/ssh-command.service
-
-# create edit-ssh-command.sh script
 echo "${EDIT_SSH_COMMAND_SCRIPT_CONTENT}">/home/${GITEA_USER_NAME}/edit-ssh-command.sh
 
 chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /home/${GITEA_USER_NAME}/edit-ssh-command.sh
