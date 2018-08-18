@@ -5,7 +5,7 @@ repository for gitea server hosting
 
 ## Limitation
 
-The installation and update scripts are currently only tested on x64 machines with Ubuntu 16.04 / Ubuntu 18.04 and SQLite.
+The installation and update scripts are currently only tested on x64 machines with Ubuntu 16.04 and SQLite.
 
 ## Server Installation
 
