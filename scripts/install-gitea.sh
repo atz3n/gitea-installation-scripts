@@ -129,6 +129,9 @@ su -c \"cd ~
 cp /home/${GITEA_USER_NAME}/tmp/app.ini /etc/gitea/
 cp /home/${GITEA_USER_NAME}/tmp/gitea.db /var/lib/gitea/data/
 
+su -c \"cd /var/lib/gitea/
+        gitea admin regenerate keys -c /etc/gitea/app.ini\" \"${GITEA_USER_NAME}\"
+
 rm -r /home/${GITEA_USER_NAME}/tmp
 rm -r /home/${GITEA_USER_NAME}/backup*.tar.gz
 
