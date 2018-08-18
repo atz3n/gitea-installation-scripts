@@ -199,7 +199,7 @@ adduser \
    ${GITEA_BACKUP_NAME}
 
 
-echo "[INFO] creating directories and setting rights ..."
+echo "[INFO] creating directories and setting permissions ..."
 mkdir -p /var/lib/gitea/custom
 mkdir -p /var/lib/gitea/data
 mkdir -p /var/lib/gitea/indexers
@@ -309,7 +309,7 @@ rm gitea-${GITEA_VERSION}-linux-amd64.asc
 
 echo "[INFO] rebooting ..."
 echo "[INFO] IMPORTANT"
-echo "[INFO] after initial configuration, change rights of /etc/gitea and /etc/gitea/app.ini to"
+echo "[INFO] after initial configuration, change permssions of /etc/gitea and /etc/gitea/app.ini to"
 echo "[INFO] chmod 750 /etc/gitea"
 echo "[INFO] chmod 644 /etc/gitea/app.ini"
 reboot
