@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 
 ##################################################################
@@ -62,7 +62,7 @@ WantedBy=multi-user.target"
 
 
 EDIT_SSH_COMMAND_SCRIPT_CONTENT="
-#!/bin/sh
+#!/bin/bash
 # This file is part of a workaround to enable repository cloning via ssh.
 # An extra command to announce the work directory of gitea is needed inside the 
 # command string of public shh keys (see <gitea user>/.ssh/authorized_keys).
@@ -101,6 +101,8 @@ KEY_FILE = /etc/gitea/key.pem"
 
 
 BACKUP_SCRIPT_CONTENT="
+#!/bin/bash
+
 su -c \"cd ~
        rm -f backup-*
        sqlite3 /var/lib/gitea/data/gitea.db .dump >gitea.sql
@@ -109,13 +111,16 @@ su -c \"cd ~
        rm gitea.sql
        rm app.ini\" \"${GITEA_USER_NAME}\"
 
-rm -f /home/${GITEA_BACKUP_NAME}/backup-*
-mv /home/${GITEA_USER_NAME}/backup-* /home/${GITEA_BACKUP_NAME}/"
+rm -f /home/${GITEA_BACKUP_NAME}/persist/backup-*
+mv /home/${GITEA_USER_NAME}/backup-* /home/${GITEA_BACKUP_NAME}/persist/
+chown ${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist/backup-*"
 
 
 RESTORE_SCRIPT_CONTENT="
+#!/bin/bash
+
 echo \"[INFO] restoring backup ...\"
-mv /home/${GITEA_BACKUP_NAME}/backup-*.tar.gz /home/${GITEA_USER_NAME}
+mv /home/${GITEA_BACKUP_NAME}/restore/backup-*.tar.gz /home/${GITEA_USER_NAME}
 chown ${GITEA_USER_NAME} /home/${GITEA_USER_NAME}/backup-*.tar.gz
 
 su -c \"cd ~
@@ -139,6 +144,21 @@ chmod 644 /etc/gitea/app.ini
 
 echo \"[INFO] rebooting ...\"
 reboot"
+
+
+ADD_BACKUP_SSHKEY_SCRIPT_CONTENT="
+#!/bin/bash
+
+PUB_SSH_KEY=\$1
+
+
+if ! [ \${PUB_SSH_KEY:0:7} = \"ssh-rsa\" ]; then
+  echo \"[ERROR] input parameter seems not to be an ssh-rsa public key\"
+elif ! [ \$# = 1 ]; then
+  echo \"[ERROR] two many arguments. Surround rsa key with double quotes: \\\"<PUBLIC KEY>\\\"\"
+else
+  echo \"command=\\\"if [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-t[[:space:]]restore/.? ]] || [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-f[[:space:]]persist/.? ]]; then \\\$SSH_ORIGINAL_COMMAND ; else echo Access Denied; fi\\\",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding \${PUB_SSH_KEY}\">>/home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+fi"
 
 
 ##################################################################
@@ -209,22 +229,28 @@ mkdir -p /var/lib/gitea/data
 mkdir -p /var/lib/gitea/indexers
 mkdir -p /var/lib/gitea/public
 mkdir -p /var/lib/gitea/log
+mkdir -p /etc/gitea
 
 chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /var/lib/gitea/data
 chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /var/lib/gitea/indexers
 chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /var/lib/gitea/log
+chown root:${GITEA_USER_NAME} /etc/gitea
 
 chmod 750 /var/lib/gitea/data
 chmod 750 /var/lib/gitea/indexers
 chmod 750 /var/lib/gitea/log
-
-mkdir -p /etc/gitea
-
-chown root:${GITEA_USER_NAME} /etc/gitea
 chmod 770 /etc/gitea
-
-chmod 700 /home/${GITEA_BACKUP_NAME}
 chmod 700 /home/${GITEA_USER_NAME}
+
+mkdir -p /home/${GITEA_BACKUP_NAME}/persist
+mkdir -p /home/${GITEA_BACKUP_NAME}/restore
+
+chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist
+chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/restore
+
+chmod 500 /home/${GITEA_BACKUP_NAME}/persist
+chmod 300 /home/${GITEA_BACKUP_NAME}/restore
+chmod 700 /home/${GITEA_BACKUP_NAME}
 
 
 echo "[INFO] copying gitea binary to global location ..."
@@ -249,6 +275,11 @@ echo "${BACKUP_SCRIPT_CONTENT}">/root/create-backup.sh
 chmod 700 /root/create-backup.sh
 
 (crontab -l 2>/dev/null; echo "${GITEA_BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
+
+
+echo "[INFO] creating backup ssh key script ..."
+echo "${ADD_BACKUP_SSHKEY_SCRIPT_CONTENT}">/root/add-backup-ssh-key.sh
+chmod 700 /root/add-backup-ssh-key.sh
 
 
 echo "[INFO] creating backup restore script ..."
@@ -278,7 +309,7 @@ chown root:${GITEA_USER_NAME} /etc/gitea/app.ini
 chmod 770 /etc/gitea/app.ini
 
 
-echo "[INFO] creating file for ssh public keys ..."
+echo "[INFO] creating files for ssh public keys for ${GITEA_USER_NAME} ..."
 mkdir -p /home/${GITEA_USER_NAME}/.ssh
 echo "">/home/${GITEA_USER_NAME}/.ssh/authorized_keys
 
@@ -287,6 +318,17 @@ chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /home/${GITEA_USER_NAME}/.ssh/author
 
 chmod 700 /home/${GITEA_USER_NAME}/.ssh
 chmod 600 /home/${GITEA_USER_NAME}/.ssh/authorized_keys
+
+
+echo "[INFO] creating files for ssh public keys for ${GITEA_BACKUP_NAME} ..."
+mkdir -p /home/${GITEA_BACKUP_NAME}/.ssh
+echo "">/home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+
+chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/.ssh
+chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+
+chmod 700 /home/${GITEA_BACKUP_NAME}/.ssh
+chmod 400 /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
 
 
 echo "[INFO] enabling and starting gitea service ..."
