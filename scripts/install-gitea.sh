@@ -15,6 +15,7 @@ GITEA_DOMAIN="gitea.some.one"
 GITEA_BACKUP_NAME="gitbackup"
 # GITEA_BACKUP_EVENT="*/1 *	* * *" # every minute (for testing purpose)
 GITEA_BACKUP_EVENT="* 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+GITEA_UPDATE_EVENT="* 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
 
 ##################################################################
@@ -161,6 +162,13 @@ else
 fi"
 
 
+UPDATE_AN_UPGRADE_SCRIPT_CONTENT="
+#!/bin/bash
+
+apt update --assume-yes >update-and-upgrade.log
+apt upgrade --assume-yes >>update-and-upgrade.log"
+
+
 ##################################################################
 # VARIABLES
 ##################################################################
@@ -273,7 +281,6 @@ chmod 700 /home/${GITEA_USER_NAME}/edit-ssh-command.sh
 echo "[INFO] creating backup job ..."
 echo "${BACKUP_SCRIPT_CONTENT}">/root/create-backup.sh
 chmod 700 /root/create-backup.sh
-
 (crontab -l 2>/dev/null; echo "${GITEA_BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
 
 
@@ -286,6 +293,11 @@ echo "[INFO] creating backup restore script ..."
 echo "${RESTORE_SCRIPT_CONTENT}">/root/restore-backup.sh
 chmod 700 /root/restore-backup.sh
 
+
+echo "[INFO] creating update and upgrade job ..."
+echo "${UPDATE_AN_UPGRADE_SCRIPT_CONTENT}">/root/update-and-upgrade.sh
+chmod 700 /root/update-and-upgrade.sh
+(crontab -l 2>>/dev/null; echo "${GITEA_UPDATE_EVENT}	/bin/bash /root/update-and-upgrade.sh") | crontab -
 
 echo "[INFO] creating self signed certificate ..."
 gitea cert --host ${GITEA_DOMAIN}
