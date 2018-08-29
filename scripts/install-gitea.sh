@@ -165,8 +165,14 @@ fi"
 UPDATE_AN_UPGRADE_SCRIPT_CONTENT="
 #!/bin/bash
 
-apt update --assume-yes >update-and-upgrade.log
-apt upgrade --assume-yes >>update-and-upgrade.log"
+echo \"[INFO] updating ...\" > update-and-upgrade.log
+apt update --assume-yes >> update-and-upgrade.log
+echo \"\" >> update-and-upgrade.log
+echo \"[INFO] upgrading ...\" >> update-and-upgrade.log
+apt upgrade --assume-yes >> update-and-upgrade.log
+echo \"\" >> update-and-upgrade.log
+echo \"[INFO] autoremoving ...\" >> update-and-upgrade.log
+apt autoremove --assume-yes >> update-and-upgrade.log"
 
 
 ##################################################################
