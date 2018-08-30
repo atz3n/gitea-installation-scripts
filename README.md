@@ -6,7 +6,8 @@ repository for gitea server hosting
 ## Limitation
 
 The installation and update scripts created by `install-gitea.sh` are currently only tested on a x64 machine with Ubuntu 16.04 and SQLite.
-The backup scripts created by `install-backup-scripts.sh` are tested on Raspberry Pi 1 Model B+ with Raspbian stretch.
+
+The backup scripts created by `install-backup-scripts.sh` are tested on an Raspberry Pi 1 Model B+ with Raspbian stretch.
 
 
 ## Server Installation
