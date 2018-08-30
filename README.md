@@ -29,11 +29,11 @@ If you want to **create** a backup **manually**, login as root and execute the b
 
 #### Preparation (you can skip this step if you allready set up your backup system)
 
-login as root and **add** the **ssh-rsa public key** of the remote machine to persist backups via the `add-backup-ssh-key.sh` script.
+login as root and **add** the **ssh-rsa public key** of the backup machine via the `add-backup-ssh-key.sh` script.
 
 #### Manually
 
-**scp** with the backup user at the backup machine to hosts persist folder `scp <GITEA_BACKUP_NAME>@<GITEA_DOMAIN>:persist/* /path/to/backup/storage`
+**scp** with the backup user at the backup machine to gitea server's persist folder `scp <GITEA_BACKUP_NAME>@<GITEA_DOMAIN>:persist/* /path/to/backup/storage`
 
 #### Automatically
 
@@ -43,11 +43,11 @@ Configure and execute the `install-backup-scripts.sh` on your backup machine (wi
 
 #### Preparation (you can skip this step if you allready set up your backup system)
 
-See preparation in Persisting section
+See preparation in Persisting section.
 
 #### Manually
 
-1. **scp** with the backup user at the backup machine to the restore folder of the gitea server `scp /path/to/backup/storage/<backup name> <GITEA_BACKUP_NAME>@<GITEA_DOMAIN>:restore/`
+1. **scp** with the backup user at the backup machine to gitea servers restore folder `scp /path/to/backup/storage/<backup name> <GITEA_BACKUP_NAME>@<GITEA_DOMAIN>:restore/`
 1. login as root on the gitea server and execute the `restore-backup.sh` script
 
 #### Via Script
