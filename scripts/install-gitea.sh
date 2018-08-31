@@ -13,8 +13,8 @@ GITEA_DOMAIN="gitea.some.one"
 #GITEA_DOMAIN=$(hostname -I | head -n1 | cut -d " " -f1)
 
 GITEA_BACKUP_NAME="gitbackup"
-GITEA_BACKUP_EVENT="* 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
-GITEA_UPDATE_EVENT="* 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+GITEA_BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+GITEA_UPDATE_EVENT="0 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
 
 ##################################################################

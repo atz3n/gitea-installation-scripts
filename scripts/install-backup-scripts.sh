@@ -12,7 +12,7 @@ STORE_PATH="~/gitea-backup"
 NUMBER_OF_STORED_BACKUPS=14
 
 ENABLE_CRONJOB=true
-GITEA_BACKUP_PULL_EVENT="* 5	* * *" # every day at 05:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+GITEA_BACKUP_PULL_EVENT="0 5	* * *" # every day at 05:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
 
 ##################################################################
@@ -46,7 +46,7 @@ NUMBER_OF_STORED_BACKUPS=${NUMBER_OF_STORED_BACKUPS}
 # VARIABLES
 ##################################################################
 
-TMP_FILE=\"\${STORE_PATH}/aaa-tmp.txt\"
+TMP_FILE=\"\${STORE_PATH}/zzz-tmp.txt\"
 
 ##################################################################
 # VARIABLES
@@ -64,7 +64,7 @@ NUMBER_OF_FILES=\`wc -l < \${TMP_FILE}\`
 while [ \${NUMBER_OF_FILES} -gt \${NUMBER_OF_STORED_BACKUPS} ]
 do
 
-  LAST_FILE_NAME=\$(tail -n 1 \${TMP_FILE})
+  LAST_FILE_NAME=\$(head -n 1 \${TMP_FILE})
   rm \"\${STORE_PATH}/\${LAST_FILE_NAME}\"
 
   ls -1 \${STORE_PATH} > \${TMP_FILE}
@@ -103,7 +103,7 @@ STORE_PATH=${STORE_PATH}
 # VARIABLES
 ##################################################################
 
-TMP_FILE=\"\${STORE_PATH}/zzz-tmp.txt\"
+TMP_FILE=\"\${STORE_PATH}/aaa-tmp.txt\"
 
 ##################################################################
 # VARIABLES
@@ -115,7 +115,7 @@ if [ \$# -eq 0 ]; then
   
   # get latest backup
   ls -1 \${STORE_PATH} > \${TMP_FILE}
-  BACKUP_FILE=\$(head -n 1 \${TMP_FILE})
+  BACKUP_FILE=\$(tail -n 1 \${TMP_FILE})
   rm \${TMP_FILE}
   
 
