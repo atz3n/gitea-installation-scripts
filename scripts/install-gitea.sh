@@ -14,8 +14,13 @@ GITEA_DOMAIN="gitea.some.one"
 
 GITEA_BACKUP_NAME="gitbackup"
 GITEA_BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
-GITEA_UPDATE_EVENT="0 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
+SERVER_UPDATE_EVENT="0 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+
+ENABLE_LETSENCRYPT=true
+LETSENCRYPT_EMAIL=<NO DEFAULT>
+LETSENCRYPT_RENEW_EVENT="30 2	*/2 *" # At 02:30 on day-of-month 1 in every 2nd month.
+                                       # (Every 60 days. That's the default time range from certbot)
 
 ##################################################################
 # CONFIGURATION
@@ -58,7 +63,8 @@ CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 [Install]
-WantedBy=multi-user.target"
+WantedBy=multi-user.target
+"
 
 
 EDIT_SSH_COMMAND_SCRIPT_CONTENT="
@@ -69,7 +75,8 @@ EDIT_SSH_COMMAND_SCRIPT_CONTENT="
 # To achieve this, a service will be started that activates this script.
 # This script then listens on file changes and adds the requiered GITEA_WORK_DIR=/var/lib/gitea command
 # whenever the authorized_keys file changes.
-while inotifywait /home/${GITEA_USER_NAME}/.ssh/authorized_keys; do sed -Ei 's/command=\"\/usr\/local\/bin\/gitea/command=\"GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys; done"
+while inotifywait /home/${GITEA_USER_NAME}/.ssh/authorized_keys; do sed -Ei 's/command=\"\/usr\/local\/bin\/gitea/command=\"GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys; done
+"
 
 EDIT_SSH_COMMAND_SERVICE_FILE_CONTENT="
 [Unit]
@@ -88,7 +95,8 @@ Restart=always
 Environment=USER=${GITEA_USER_NAME} HOME=/home/${GITEA_USER_NAME}
 
 [Install]
-WantedBy=multi-user.target"
+WantedBy=multi-user.target
+"
 
 
 INITIAL_APP_INI_CONTENT="
@@ -97,8 +105,10 @@ PROTOCOL=https
 ROOT_URL = https://${GITEA_DOMAIN}:${GITEA_PORT}/
 HTTP_PORT = ${GITEA_PORT}
 CERT_FILE = /etc/gitea/cert.pem
-KEY_FILE = /etc/gitea/key.pem"
-
+KEY_FILE = /etc/gitea/key.pem
+REDIRECT_OTHER_PORT = true
+PORT_TO_REDIRECT = 80
+"
 
 BACKUP_SCRIPT_CONTENT="
 #!/bin/bash
@@ -113,7 +123,8 @@ su -c \"cd ~
 
 rm -f /home/${GITEA_BACKUP_NAME}/persist/backup-*
 mv /home/${GITEA_USER_NAME}/backup-* /home/${GITEA_BACKUP_NAME}/persist/
-chown ${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist/backup-*"
+chown ${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist/backup-*
+"
 
 
 RESTORE_SCRIPT_CONTENT="
@@ -143,7 +154,8 @@ rm -r /home/${GITEA_USER_NAME}/backup*.tar.gz
 chmod 644 /etc/gitea/app.ini
 
 echo \"[INFO] rebooting ...\"
-reboot"
+reboot
+"
 
 
 ADD_BACKUP_SSHKEY_SCRIPT_CONTENT="
@@ -158,21 +170,44 @@ elif ! [ \$# = 1 ]; then
   echo \"[ERROR] two many arguments. Surround rsa key with double quotes: \\\"<PUBLIC KEY>\\\"\"
 else
   echo \"command=\\\"if [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-t[[:space:]]restore/.? ]] || [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-f[[:space:]]persist/.? ]]; then \\\$SSH_ORIGINAL_COMMAND ; else echo Access Denied; fi\\\",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding \${PUB_SSH_KEY}\">>/home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
-fi"
+fi
+"
 
 
 UPDATE_AN_UPGRADE_SCRIPT_CONTENT="
 #!/bin/bash
 
-echo \"[INFO] updating ...\" > update-and-upgrade.log
+echo \"[INFO] \$(date) ...\" > update-and-upgrade.log
+
+echo \"[INFO] updating ...\" >> update-and-upgrade.log
 apt update --assume-yes >> update-and-upgrade.log
 echo \"\" >> update-and-upgrade.log
+
 echo \"[INFO] upgrading ...\" >> update-and-upgrade.log
 apt upgrade --assume-yes >> update-and-upgrade.log
 echo \"\" >> update-and-upgrade.log
-echo \"[INFO] autoremoving ...\" >> update-and-upgrade.log
-apt autoremove --assume-yes >> update-and-upgrade.log"
 
+echo \"[INFO] autoremoving ...\" >> update-and-upgrade.log
+apt autoremove --assume-yes >> update-and-upgrade.log
+"
+
+
+RENEW_CERTIFICATE_SCRIPT_CONTENT="
+#!/bin/bash
+
+echo \"[INFO] \$(date) ...\" > renew-certificate.log
+
+echo \"[INFO] stopping gitea service ...\" >> renew-certificate.log
+systemctl stop gitea.service
+echo \"\" >> renew-certificate.log
+
+echo \"[INFO] renewing certificate ...\" >> renew-certificate.log
+certbot renew
+echo \"\" >> renew-certificate.log
+
+echo \"[INFO] restarting gitea service ...\" >> renew-certificate.log
+systemctl start gitea.service
+"
 
 ##################################################################
 # VARIABLES
@@ -201,6 +236,17 @@ apt install -y inotify-tools
 
 echo "[INFO] installing tool to access sqlite3 database ..."
 apt install -y sqlite3
+
+
+if [ ${ENABLE_LETSENCRYPT} == true ]; then
+  
+  echo "[INFO] installing Let's Encrypt certbot ..."
+  apt-get install -y software-properties-common
+  add-apt-repository -y ppa:certbot/certbot
+  apt-get update -y
+  apt-get install -y certbot
+
+fi
 
 
 echo "[INFO] getting gitea ..."
@@ -302,21 +348,48 @@ chmod 700 /root/restore-backup.sh
 echo "[INFO] creating update and upgrade job ..."
 echo "${UPDATE_AN_UPGRADE_SCRIPT_CONTENT}">/root/update-and-upgrade.sh
 chmod 700 /root/update-and-upgrade.sh
-(crontab -l 2>>/dev/null; echo "${GITEA_UPDATE_EVENT}	/bin/bash /root/update-and-upgrade.sh") | crontab -
-
-echo "[INFO] creating self signed certificate ..."
-gitea cert --host ${GITEA_DOMAIN}
-
-chown root:${GITEA_USER_NAME} key.pem
-chown root:${GITEA_USER_NAME} cert.pem
-
-chmod 640 key.pem
-chmod 644 cert.pem
+(crontab -l 2>>/dev/null; echo "${SERVER_UPDATE_EVENT}	/bin/bash /root/update-and-upgrade.sh") | crontab -
 
 
-echo "[INFO] moving certificate and key to final detination ..."
-mv key.pem /etc/gitea/
-mv cert.pem /etc/gitea/
+if [ ${ENABLE_LETSENCRYPT} == true ]; then
+
+  echo "[INFO] requesting Let's Encrypt certificate ..."
+  certbot certonly -n --standalone --agree-tos --email ${LETSENCRYPT_EMAIL} -d ${GITEA_DOMAIN}
+
+  
+  echo "[INFO] creating links to certificate and key and setting permissions ..."
+  ln -s /etc/letsencrypt/live/${GITEA_DOMAIN}/fullchain.pem /etc/gitea/cert.pem
+  ln -s /etc/letsencrypt/live/${GITEA_DOMAIN}/privkey.pem /etc/gitea/key.pem
+
+  chown root:git /etc/letsencrypt/live
+  chmod 750 /etc/letsencrypt/live
+
+  chown root:git /etc/letsencrypt/archive
+  chmod 750 /etc/letsencrypt/archive
+
+
+  echo "[INFO] creating renew certificate job"
+  echo "${RENEW_CERTIFICATE_SCRIPT_CONTENT}">/root/renew-certificate.sh
+  chmod 700 /root/renew-certificate.sh
+  (crontab -l 2>>/dev/null; echo "${LETSENCRYPT_RENEW_EVENT}	/bin/bash /root/renew-certificate.sh") | crontab -
+
+else
+
+  echo "[INFO] creating self signed certificate ..."
+  gitea cert --host ${GITEA_DOMAIN}
+
+  chown root:${GITEA_USER_NAME} key.pem
+  chown root:${GITEA_USER_NAME} cert.pem
+
+  chmod 640 key.pem
+  chmod 644 cert.pem
+
+
+  echo "[INFO] moving certificate and key to final detination ..."
+  mv key.pem /etc/gitea/
+  mv cert.pem /etc/gitea/
+
+fi
 
 
 echo "[INFO] creating initial app.ini file ..."
