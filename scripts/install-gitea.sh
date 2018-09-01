@@ -198,15 +198,15 @@ RENEW_CERTIFICATE_SCRIPT_CONTENT="
 echo \"[INFO] \$(date) ...\" > renew-certificate.log
 
 echo \"[INFO] stopping gitea service ...\" >> renew-certificate.log
-systemctl stop gitea.service
+systemctl stop gitea.service >> renew-certificate.log
 echo \"\" >> renew-certificate.log
 
 echo \"[INFO] renewing certificate ...\" >> renew-certificate.log
-certbot renew
+certbot renew >> renew-certificate.log
 echo \"\" >> renew-certificate.log
 
 echo \"[INFO] restarting gitea service ...\" >> renew-certificate.log
-systemctl start gitea.service
+systemctl start gitea.service >> renew-certificate.log
 "
 
 ##################################################################
