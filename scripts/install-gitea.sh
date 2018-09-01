@@ -18,9 +18,9 @@ GITEA_BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuuser
 SERVER_UPDATE_EVENT="0 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
 ENABLE_LETSENCRYPT=true
-LETSENCRYPT_EMAIL=<NO DEFAULT>
-LETSENCRYPT_RENEW_EVENT="30 2	*/2 *" # At 02:30 on day-of-month 1 in every 2nd month.
-                                       # (Every 60 days. That's the default time range from certbot)
+LETSENCRYPT_EMAIL="dummy@dummy.com"
+LETSENCRYPT_RENEW_EVENT="30 2	1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
+                                         # (Every 60 days. That's the default time range from certbot)
 
 ##################################################################
 # CONFIGURATION
