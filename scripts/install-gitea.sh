@@ -13,7 +13,8 @@ GITEA_DOMAIN="gitea.some.one"
 #GITEA_DOMAIN=$(hostname -I | head -n1 | cut -d " " -f1)
 
 GITEA_BACKUP_NAME="gitbackup"
-GITEA_BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+BACKUP_KEY="dummy1234"
 
 SERVER_UPDATE_EVENT="0 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
@@ -78,6 +79,7 @@ EDIT_SSH_COMMAND_SCRIPT_CONTENT="
 while inotifywait /home/${GITEA_USER_NAME}/.ssh/authorized_keys; do sed -Ei 's/command=\"\/usr\/local\/bin\/gitea/command=\"GITEA_WORK_DIR=\/var\/lib\/gitea \/usr\/local\/bin\/gitea/g' /home/${GITEA_USER_NAME}/.ssh/authorized_keys; done
 "
 
+
 EDIT_SSH_COMMAND_SERVICE_FILE_CONTENT="
 [Unit]
 Description=Adds GITEA_WORK_DIR command to ssh autorization keys
@@ -110,20 +112,28 @@ REDIRECT_OTHER_PORT = true
 PORT_TO_REDIRECT = 80
 "
 
+
 BACKUP_SCRIPT_CONTENT="
 #!/bin/bash
 
+BACKUP_NAME=\"backup-\$(date +'%s').tar.gz\"
+
 su -c \"cd ~
        rm -f backup-*
-       sqlite3 /var/lib/gitea/data/gitea.db .dump >gitea.sql
-       cp /etc/gitea/app.ini /home/${GITEA_USER_NAME}
-       tar -pcvzf backup-\$(date +'%s').tar.gz gitea-repositories/ gitea.sql app.ini
+       sqlite3 /var/lib/gitea/data/gitea.db .dump > gitea.sql
+       cp /etc/gitea/app.ini /home/git
+       tar -pcvzf \${BACKUP_NAME} gitea-repositories/ gitea.sql app.ini
        rm gitea.sql
-       rm app.ini\" \"${GITEA_USER_NAME}\"
+       rm app.ini\" \"git\"
 
-rm -f /home/${GITEA_BACKUP_NAME}/persist/backup-*
-mv /home/${GITEA_USER_NAME}/backup-* /home/${GITEA_BACKUP_NAME}/persist/
-chown ${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist/backup-*
+openssl enc -aes-256-cbc -e -in /home/git/\${BACKUP_NAME} -out \"\${BACKUP_NAME}.enc\" -kfile backup-key.txt
+
+rm -f /home/git/\${BACKUP_NAME}
+rm -f /home/gitbackup/persist/backup-*
+
+mv \"\${BACKUP_NAME}.enc\" /home/gitbackup/persist/
+chown gitbackup /home/gitbackup/persist/\"\${BACKUP_NAME}.enc\"
+chmod 400 /home/gitbackup/persist/\"\${BACKUP_NAME}.enc\"
 "
 
 
@@ -131,25 +141,32 @@ RESTORE_SCRIPT_CONTENT="
 #!/bin/bash
 
 echo \"[INFO] restoring backup ...\"
-mv /home/${GITEA_BACKUP_NAME}/restore/backup-*.tar.gz /home/${GITEA_USER_NAME}
-chown ${GITEA_USER_NAME} /home/${GITEA_USER_NAME}/backup-*.tar.gz
+
+cd /home/gitbackup/restore/
+ENC_BACKUP_NAME=\$(find backup-*.tar.gz.enc)
+BACKUP_NAME=\"\${ENC_BACKUP_NAME::-4}\"
+cd ~
+
+openssl aes-256-cbc -d -in /home/gitbackup/restore/\${ENC_BACKUP_NAME} -out /home/git/\${BACKUP_NAME} -kfile backup-key.txt
+chown git /home/git/\${BACKUP_NAME}
 
 su -c \"cd ~
        rm -rf gitea-repositories
        mkdir tmp
        cd tmp/
-       tar -xzf /home/${GITEA_USER_NAME}/backup*.tar.gz 
+       tar -xzf ./../\${BACKUP_NAME}
        sqlite3 gitea.db < gitea.sql
-       mv gitea-repositories/ /home/${GITEA_USER_NAME}/\" \"${GITEA_USER_NAME}\"
+       mv gitea-repositories/ /home/git/\" \"git\"
 
-cp /home/${GITEA_USER_NAME}/tmp/app.ini /etc/gitea/
-cp /home/${GITEA_USER_NAME}/tmp/gitea.db /var/lib/gitea/data/
+cp /home/git/tmp/app.ini /etc/gitea/
+cp /home/git/tmp/gitea.db /var/lib/gitea/data/
 
 su -c \"cd /var/lib/gitea/
-        gitea admin regenerate keys -c /etc/gitea/app.ini\" \"${GITEA_USER_NAME}\"
+       gitea admin regenerate keys -c /etc/gitea/app.ini\" \"git\"
 
-rm -r /home/${GITEA_USER_NAME}/tmp
-rm -r /home/${GITEA_USER_NAME}/backup*.tar.gz
+rm -r /home/git/tmp
+rm -r /home/git/\${BACKUP_NAME}
+rm -r /home/gitbackup/restore/\${ENC_BACKUP_NAME}
 
 chmod 644 /etc/gitea/app.ini
 
@@ -208,6 +225,7 @@ echo \"\" >> renew-certificate.log
 echo \"[INFO] restarting gitea service ...\" >> renew-certificate.log
 systemctl start gitea.service >> renew-certificate.log
 "
+
 
 ##################################################################
 # VARIABLES
@@ -329,10 +347,15 @@ chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /home/${GITEA_USER_NAME}/edit-ssh-co
 chmod 700 /home/${GITEA_USER_NAME}/edit-ssh-command.sh
 
 
+echo "[INFO] storing backup key ..."
+echo ${BACKUP_KEY} > backup-key.txt
+chmod 600 backup-key.txt
+
+
 echo "[INFO] creating backup job ..."
 echo "${BACKUP_SCRIPT_CONTENT}">/root/create-backup.sh
 chmod 700 /root/create-backup.sh
-(crontab -l 2>/dev/null; echo "${GITEA_BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
+(crontab -l 2>/dev/null; echo "${BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
 
 
 echo "[INFO] creating backup ssh key script ..."
