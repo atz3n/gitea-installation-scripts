@@ -24,7 +24,7 @@ The backup scripts created by `install-backup-scripts.sh` are tested on an Raspb
 
 ### Creating
 
-If you want to **create** a backup **manually**, login as root and execute the backup script `./create-bakup.sh`. The backup will be created under: `backup-<unix timestamp>.tar.gz` and can be found inside the backup users persist folder `/home/<GITEA_BACKUP_NAME>/persist/`. Creating a backup manually is usually not necessary because there is a daemon running which **creates** backups **periodically**. The period time can be configured via the `GITEA_BACKUP_EVENT` config variable inside the `install-gitea.sh` script.
+If you want to **create** a backup **manually**, login as root and execute the backup script `./create-bakup.sh`. The backup will be created under: `backup-<unix timestamp>.tar.gz.enc` and can be found inside the backup users persist folder `/home/<GITEA_BACKUP_NAME>/persist/`. Creating a backup manually is usually not necessary because there is a daemon running which **creates** backups **periodically**. The period time can be configured via the `GITEA_BACKUP_EVENT` config variable inside the `install-gitea.sh` script.
     
 
 ### Persisting
