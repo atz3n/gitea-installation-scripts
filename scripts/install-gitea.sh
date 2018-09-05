@@ -118,22 +118,18 @@ BACKUP_SCRIPT_CONTENT="
 
 BACKUP_NAME=\"backup-\$(date +'%s').tar.gz\"
 
-su -c \"cd ~
-       rm -f backup-*
-       sqlite3 /var/lib/gitea/data/gitea.db .dump > gitea.sql
-       cp /etc/gitea/app.ini /home/git
-       tar -pcvzf \${BACKUP_NAME} gitea-repositories/ gitea.sql app.ini
-       rm gitea.sql
-       rm app.ini\" \"git\"
 
-openssl enc -aes-256-cbc -e -in /home/git/\${BACKUP_NAME} -out \"\${BACKUP_NAME}.enc\" -kfile backup-key.txt
+sqlite3 /var/lib/gitea/data/gitea.db .dump > gitea.sql
+rm -f /home/${GITEA_BACKUP_NAME}/persist/backup-*
 
-rm -f /home/git/\${BACKUP_NAME}
-rm -f /home/gitbackup/persist/backup-*
+tar -pcvzf \${BACKUP_NAME} /home/${GITEA_USER_NAME}/gitea-repositories/ gitea.sql /etc/gitea/app.ini /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+openssl enc -aes-256-cbc -e -in \${BACKUP_NAME} -out /home/${GITEA_BACKUP_NAME}/persist/\"\${BACKUP_NAME}.enc\" -kfile backup-key.txt
 
-mv \"\${BACKUP_NAME}.enc\" /home/gitbackup/persist/
-chown gitbackup /home/gitbackup/persist/\"\${BACKUP_NAME}.enc\"
-chmod 400 /home/gitbackup/persist/\"\${BACKUP_NAME}.enc\"
+rm -f gitea.sql
+rm -f \${BACKUP_NAME}
+
+chown ${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist/\"\${BACKUP_NAME}.enc\"
+chmod 400 /home/${GITEA_BACKUP_NAME}/persist/\"\${BACKUP_NAME}.enc\"
 "
 
 
@@ -142,33 +138,43 @@ RESTORE_SCRIPT_CONTENT="
 
 echo \"[INFO] restoring backup ...\"
 
-cd /home/gitbackup/restore/
+
+cd /home/${GITEA_BACKUP_NAME}/restore/
 ENC_BACKUP_NAME=\$(find backup-*.tar.gz.enc)
 BACKUP_NAME=\"\${ENC_BACKUP_NAME::-4}\"
 cd ~
 
-openssl aes-256-cbc -d -in /home/gitbackup/restore/\${ENC_BACKUP_NAME} -out /home/git/\${BACKUP_NAME} -kfile backup-key.txt
-chown git /home/git/\${BACKUP_NAME}
 
-su -c \"cd ~
-       rm -rf gitea-repositories
-       mkdir tmp
-       cd tmp/
-       tar -xzf ./../\${BACKUP_NAME}
-       sqlite3 gitea.db < gitea.sql
-       mv gitea-repositories/ /home/git/\" \"git\"
+openssl aes-256-cbc -d -in /home/${GITEA_BACKUP_NAME}/restore/\${ENC_BACKUP_NAME} -out \${BACKUP_NAME} -kfile backup-key.txt
 
-cp /home/git/tmp/app.ini /etc/gitea/
-cp /home/git/tmp/gitea.db /var/lib/gitea/data/
+
+mkdir tmp
+cd tmp/
+tar -xzf ./../\${BACKUP_NAME}
+cd ~
+
+
+mv tmp/etc/gitea/app.ini /etc/gitea/app.ini
+
+mv tmp/home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+
+rm -rf /home/${GITEA_USER_NAME}/gitea-repositories
+mv tmp/home/${GITEA_USER_NAME}/gitea-repositories/ /home/${GITEA_USER_NAME}/
+
+sqlite3 tmp/gitea.db < tmp/gitea.sql
+mv tmp/gitea.db /var/lib/gitea/data/
+chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /var/lib/gitea/data/gitea.db
+chmod 600 /var/lib/gitea/data/gitea.db
+
 
 su -c \"cd /var/lib/gitea/
-       gitea admin regenerate keys -c /etc/gitea/app.ini\" \"git\"
+       gitea admin regenerate keys -c /etc/gitea/app.ini\" \"${GITEA_USER_NAME}\"
 
-rm -r /home/git/tmp
-rm -r /home/git/\${BACKUP_NAME}
-rm -r /home/gitbackup/restore/\${ENC_BACKUP_NAME}
 
-chmod 644 /etc/gitea/app.ini
+rm -r tmp/
+rm \${BACKUP_NAME}
+rm /home/${GITEA_BACKUP_NAME}/restore/\${ENC_BACKUP_NAME}
+
 
 echo \"[INFO] rebooting ...\"
 reboot
@@ -197,7 +203,7 @@ UPDATE_AN_UPGRADE_SCRIPT_CONTENT="
 echo \"[INFO] \$(date) ...\" > update-and-upgrade.log
 
 echo \"[INFO] updating ...\" >> update-and-upgrade.log
-apt update --assume-yes >> update-and-upgrade.log
+apt update >> update-and-upgrade.log
 echo \"\" >> update-and-upgrade.log
 
 echo \"[INFO] upgrading ...\" >> update-and-upgrade.log
@@ -236,7 +242,7 @@ systemctl start gitea.service >> renew-certificate.log
 echo "[INFO] setting language variables to solve perls language problem ..."
 echo "export LANGUAGE=en_US.UTF-8 
 export LANG=en_US.UTF-8 
-export LC_ALL=en_US.UTF-8">>~/.profile
+export LC_ALL=en_US.UTF-8" >> ~/.profile
 
 # source variables
 . ~/.profile
