@@ -16,8 +16,6 @@ GITEA_BACKUP_NAME="gitbackup"
 BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 BACKUP_KEY="dummy1234"
 
-SERVER_UPDATE_EVENT="0 4	* * *" # every day at 04:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
-
 ENABLE_LETSENCRYPT=true
 LETSENCRYPT_EMAIL="dummy@dummy.com"
 LETSENCRYPT_RENEW_EVENT="30 2	1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
@@ -29,7 +27,7 @@ LETSENCRYPT_RENEW_EVENT="30 2	1 */2 *" # At 02:30 on day-of-month 1 in every 2nd
 
 
 ##################################################################
-# VARIABLES
+# DEFINES
 ##################################################################
 
 GITEA_SERVICE_FILE_CONTENT="
@@ -197,21 +195,11 @@ fi
 "
 
 
-UPDATE_AN_UPGRADE_SCRIPT_CONTENT="
-#!/bin/bash
-
-echo \"[INFO] \$(date) ...\" > update-and-upgrade.log
-
-echo \"[INFO] updating ...\" >> update-and-upgrade.log
-apt update >> update-and-upgrade.log
-echo \"\" >> update-and-upgrade.log
-
-echo \"[INFO] upgrading ...\" >> update-and-upgrade.log
-apt upgrade --assume-yes >> update-and-upgrade.log
-echo \"\" >> update-and-upgrade.log
-
-echo \"[INFO] autoremoving ...\" >> update-and-upgrade.log
-apt autoremove --assume-yes >> update-and-upgrade.log
+UNATTENDED_UPGRADE_PERIODIC_SCRIPT_CONTENT="
+APT::Periodic::Update-Package-Lists \"1\";
+APT::Periodic::Download-Upgradeable-Packages \"1\";
+APT::Periodic::Unattended-Upgrade \"1\";
+APT::Periodic::AutocleanInterval \"1\";
 "
 
 
@@ -234,7 +222,7 @@ systemctl start gitea.service >> renew-certificate.log
 
 
 ##################################################################
-# VARIABLES
+# DEFINES
 ##################################################################
 
 
@@ -248,23 +236,21 @@ export LC_ALL=en_US.UTF-8" >> ~/.profile
 . ~/.profile
 
 
-echo "[INFO] updating system ..."
-apt update
-apt upgrade -y
-apt autoremove -y
+echo "" && echo "[INFO] updating system ..."
+unattended-upgrades --debug cat /var/log/unattended-upgrades/unattended-upgrades.log
 
 
-echo "[INFO] installing tool to listen on file changes ..."
+echo "" && echo "[INFO] installing tool to listen on file changes ..."
 apt install -y inotify-tools
 
 
-echo "[INFO] installing tool to access sqlite3 database ..."
+echo "" && echo "[INFO] installing tool to access sqlite3 database ..."
 apt install -y sqlite3
 
 
 if [ ${ENABLE_LETSENCRYPT} == true ]; then
   
-  echo "[INFO] installing Let's Encrypt certbot ..."
+  echo "" && echo "[INFO] installing Let's Encrypt certbot ..."
   apt-get install -y software-properties-common
   add-apt-repository -y ppa:certbot/certbot
   apt-get update -y
@@ -273,18 +259,18 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
 fi
 
 
-echo "[INFO] getting gitea ..."
+echo "" && echo "[INFO] getting gitea ..."
 wget -O gitea https://dl.gitea.io/gitea/${GITEA_VERSION}/gitea-${GITEA_VERSION}-linux-amd64
 chmod +x gitea
 
 
-echo "[INFO] verifing gitea ..."
+echo "" && echo "[INFO] verifing gitea ..."
 gpg --keyserver pgp.mit.edu --recv 0x2D9AE806EC1592E2
 wget -O gitea-${GITEA_VERSION}-linux-amd64.asc https://dl.gitea.io/gitea/${GITEA_VERSION}/gitea-${GITEA_VERSION}-linux-amd64.asc
 gpg --verify gitea-${GITEA_VERSION}-linux-amd64.asc gitea
 
 
-echo "[INFO] creating gitea user ..."
+echo "" && echo "[INFO] creating gitea user ..."
 adduser \
    --system \
    --shell /bin/bash \
@@ -295,7 +281,7 @@ adduser \
    ${GITEA_USER_NAME}
 
 
-echo "[INFO] creating gitea backup user ..."
+echo "" && echo "[INFO] creating gitea backup user ..."
 adduser \
    --system \
    --shell /bin/bash \
@@ -306,7 +292,7 @@ adduser \
    ${GITEA_BACKUP_NAME}
 
 
-echo "[INFO] creating directories and setting permissions ..."
+echo "" && echo "[INFO] creating directories and setting permissions ..."
 mkdir -p /var/lib/gitea/custom
 mkdir -p /var/lib/gitea/data
 mkdir -p /var/lib/gitea/indexers
@@ -336,16 +322,16 @@ chmod 300 /home/${GITEA_BACKUP_NAME}/restore
 chmod 700 /home/${GITEA_BACKUP_NAME}
 
 
-echo "[INFO] copying gitea binary to global location ..."
+echo "" && echo "[INFO] copying gitea binary to global location ..."
 cp gitea /usr/local/bin/gitea
 
 
-echo "[INFO] creating gitea service ..."
+echo "" && echo "[INFO] creating gitea service ..."
 mkdir -p /etc/systemd/system
 echo "${GITEA_SERVICE_FILE_CONTENT}">/etc/systemd/system/gitea.service
 
 
-echo "[INFO] creating ssh command edit service ..."
+echo "" && echo "[INFO] creating ssh command edit service ..."
 echo "${EDIT_SSH_COMMAND_SERVICE_FILE_CONTENT}">/etc/systemd/system/ssh-command.service
 echo "${EDIT_SSH_COMMAND_SCRIPT_CONTENT}">/home/${GITEA_USER_NAME}/edit-ssh-command.sh
 
@@ -353,40 +339,38 @@ chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /home/${GITEA_USER_NAME}/edit-ssh-co
 chmod 700 /home/${GITEA_USER_NAME}/edit-ssh-command.sh
 
 
-echo "[INFO] storing backup key ..."
+echo "" && echo "[INFO] storing backup key ..."
 echo ${BACKUP_KEY} > backup-key.txt
 chmod 600 backup-key.txt
 
 
-echo "[INFO] creating backup job ..."
+echo "" && echo "[INFO] creating backup job ..."
 echo "${BACKUP_SCRIPT_CONTENT}">/root/create-backup.sh
 chmod 700 /root/create-backup.sh
 (crontab -l 2>/dev/null; echo "${BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
 
 
-echo "[INFO] creating backup ssh key script ..."
+echo "" && echo "[INFO] creating backup ssh key script ..."
 echo "${ADD_BACKUP_SSHKEY_SCRIPT_CONTENT}">/root/add-backup-ssh-key.sh
 chmod 700 /root/add-backup-ssh-key.sh
 
 
-echo "[INFO] creating backup restore script ..."
+echo "" && echo "[INFO] creating backup restore script ..."
 echo "${RESTORE_SCRIPT_CONTENT}">/root/restore-backup.sh
 chmod 700 /root/restore-backup.sh
 
 
-echo "[INFO] creating update and upgrade job ..."
-echo "${UPDATE_AN_UPGRADE_SCRIPT_CONTENT}">/root/update-and-upgrade.sh
-chmod 700 /root/update-and-upgrade.sh
-(crontab -l 2>>/dev/null; echo "${SERVER_UPDATE_EVENT}	/bin/bash /root/update-and-upgrade.sh") | crontab -
+echo "" && echo "[INFO] enabling unattended-upgrade ..."
+echo "${UNATTENDED_UPGRADE_PERIODIC_SCRIPT_CONTENT}">/etc/apt/apt.conf.d/10periodic 
 
 
 if [ ${ENABLE_LETSENCRYPT} == true ]; then
 
-  echo "[INFO] requesting Let's Encrypt certificate ..."
+  echo "" && echo "[INFO] requesting Let's Encrypt certificate ..."
   certbot certonly -n --standalone --agree-tos --email ${LETSENCRYPT_EMAIL} -d ${GITEA_DOMAIN}
 
   
-  echo "[INFO] creating links to certificate and key and setting permissions ..."
+  echo "" && echo "[INFO] creating links to certificate and key and setting permissions ..."
   ln -s /etc/letsencrypt/live/${GITEA_DOMAIN}/fullchain.pem /etc/gitea/cert.pem
   ln -s /etc/letsencrypt/live/${GITEA_DOMAIN}/privkey.pem /etc/gitea/key.pem
 
@@ -397,14 +381,14 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
   chmod 750 /etc/letsencrypt/archive
 
 
-  echo "[INFO] creating renew certificate job"
+  echo "" && echo "[INFO] creating renew certificate job"
   echo "${RENEW_CERTIFICATE_SCRIPT_CONTENT}">/root/renew-certificate.sh
   chmod 700 /root/renew-certificate.sh
   (crontab -l 2>>/dev/null; echo "${LETSENCRYPT_RENEW_EVENT}	/bin/bash /root/renew-certificate.sh") | crontab -
 
 else
 
-  echo "[INFO] creating self signed certificate ..."
+  echo "" && echo "[INFO] creating self signed certificate ..."
   gitea cert --host ${GITEA_DOMAIN}
 
   chown root:${GITEA_USER_NAME} key.pem
@@ -414,21 +398,21 @@ else
   chmod 644 cert.pem
 
 
-  echo "[INFO] moving certificate and key to final detination ..."
+  echo "" && echo "[INFO] moving certificate and key to final detination ..."
   mv key.pem /etc/gitea/
   mv cert.pem /etc/gitea/
 
 fi
 
 
-echo "[INFO] creating initial app.ini file ..."
+echo "" && echo "[INFO] creating initial app.ini file ..."
 echo "${INITIAL_APP_INI_CONTENT}">/etc/gitea/app.ini
 
 chown root:${GITEA_USER_NAME} /etc/gitea/app.ini
 chmod 770 /etc/gitea/app.ini
 
 
-echo "[INFO] creating files for ssh public keys for ${GITEA_USER_NAME} ..."
+echo "" && echo "[INFO] creating files for ssh public keys for ${GITEA_USER_NAME} ..."
 mkdir -p /home/${GITEA_USER_NAME}/.ssh
 echo "">/home/${GITEA_USER_NAME}/.ssh/authorized_keys
 
@@ -439,7 +423,7 @@ chmod 700 /home/${GITEA_USER_NAME}/.ssh
 chmod 600 /home/${GITEA_USER_NAME}/.ssh/authorized_keys
 
 
-echo "[INFO] creating files for ssh public keys for ${GITEA_BACKUP_NAME} ..."
+echo "" && echo "[INFO] creating files for ssh public keys for ${GITEA_BACKUP_NAME} ..."
 mkdir -p /home/${GITEA_BACKUP_NAME}/.ssh
 echo "">/home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
 
@@ -450,22 +434,22 @@ chmod 700 /home/${GITEA_BACKUP_NAME}/.ssh
 chmod 400 /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
 
 
-echo "[INFO] enabling and starting gitea service ..."
+echo "" && echo "[INFO] enabling and starting gitea service ..."
 systemctl enable gitea.service
 systemctl start gitea.service
 
 
-echo "[INFO] enabling and starting ssh command service ..."
+echo "" && echo "[INFO] enabling and starting ssh command service ..."
 systemctl enable ssh-command.service
 systemctl start ssh-command.service
 
 
-echo "[INFO] cleaning up ..."
+echo "" && echo "[INFO] cleaning up ..."
 rm gitea
 rm gitea-${GITEA_VERSION}-linux-amd64.asc
 
 
-echo "[INFO] rebooting ..."
+echo "" && echo "[INFO] rebooting ..."
 echo "[INFO] IMPORTANT"
 echo "[INFO] after initial configuration, change permssions of /etc/gitea and /etc/gitea/app.ini to"
 echo "[INFO] chmod 750 /etc/gitea"
