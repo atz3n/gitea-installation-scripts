@@ -120,15 +120,15 @@ if [ \$# -eq 0 ]; then
   
 
   # check if backup exists
-  if [[ \${BACKUP_FILE} != backup-* ]] || [[ \${BACKUP_FILE} != *.tar.gz ]]; then 
+  if [[ \${BACKUP_FILE} != backup-* ]] || [[ \${BACKUP_FILE} != *.tar.gz.enc ]]; then 
     echo \"[ERROR] no backup file found\"
     exit
   fi
 
 elif [ \$# -eq 1  ]; then
 
-  # check if parameter starts with \"backup-\" and ends with \".tar.gz\"
-  if [[ \$1 != backup-* ]] || [[ \$1 != *.tar.gz ]] ; then 
+  # check if parameter starts with \"backup-\" and ends with \".tar.gz.enc\"
+  if [[ \$1 != backup-* ]] || [[ \$1 != *.tar.gz.enc ]] ; then 
     echo \"[ERROR] backup name does not match backup name style\"
     exit
   fi
