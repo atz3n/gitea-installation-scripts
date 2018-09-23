@@ -1,9 +1,14 @@
 #!/bin/bash
 
+#
+# This script installs gitea (https://gitea.io/en-us/) on an ubuntu server.
+# It is based on the official installation guide
+# (https://docs.gitea.io/en-us/install-from-binary/)
+#
 
-##################################################################
+###################################################################################################
 # CONFIGURATION
-##################################################################
+###################################################################################################
 
 GITEA_USER_NAME="git"
 
@@ -21,14 +26,18 @@ LETSENCRYPT_EMAIL="dummy@dummy.com"
 LETSENCRYPT_RENEW_EVENT="30 2	1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
                                          # (Every 60 days. That's the default time range from certbot)
 
-##################################################################
-# CONFIGURATION
-##################################################################
 
-
-##################################################################
+###################################################################################################
 # DEFINES
-##################################################################
+###################################################################################################
+
+PROFILE_LANGUAGE_VARIABLE="
+export LANGUAGE=\"en_US.UTF-8\"
+export LANG=\"en_US.UTF-8 \"
+export LC_ALL=\"en_US.UTF-8\"
+export LC_CTYPE=\"en_US.UTF-8\"
+"
+
 
 GITEA_SERVICE_FILE_CONTENT="
 [Unit]
@@ -221,19 +230,13 @@ systemctl start gitea.service >> renew-certificate.log
 "
 
 
-##################################################################
-# DEFINES
-##################################################################
+###################################################################################################
+# MAIN
+###################################################################################################
 
-
-
-echo "[INFO] setting language variables to solve perls language problem ..."
-echo "export LANGUAGE=en_US.UTF-8 
-export LANG=en_US.UTF-8 
-export LC_ALL=en_US.UTF-8" >> ~/.profile
-
-# source variables
-. ~/.profile
+echo "[INFO] setting language variables to solve location problems ..."
+echo "${PROFILE_LANGUAGE_VARIABLE}" >> ~/.profile
+source ~/.profile
 
 
 echo "" && echo "[INFO] updating system ..."
