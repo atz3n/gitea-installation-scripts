@@ -350,7 +350,7 @@ chmod 600 backup-key.txt
 echo "" && echo "[INFO] creating backup job ..."
 echo "${BACKUP_SCRIPT_CONTENT}" > /root/create-backup.sh
 chmod 700 /root/create-backup.sh
-(crontab -l 2 > /dev/null; echo "${BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
+(crontab -l 2> /dev/null; echo "${BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
 
 
 echo "" && echo "[INFO] creating backup ssh key script ..."
@@ -387,7 +387,7 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
     echo "" && echo "[INFO] creating renew certificate job"
     echo "${RENEW_CERTIFICATE_SCRIPT_CONTENT}" > /root/renew-certificate.sh
     chmod 700 /root/renew-certificate.sh
-    (crontab -l 2 >> /dev/null; echo "${LETSENCRYPT_RENEW_EVENT}	/bin/bash /root/renew-certificate.sh") | crontab -
+    (crontab -l 2>> /dev/null; echo "${LETSENCRYPT_RENEW_EVENT}	/bin/bash /root/renew-certificate.sh") | crontab -
 
 else
 
