@@ -5,14 +5,16 @@
 # CONFIGURATION
 ###################################################################################################
 
-GITEA_BACKUP_NAME="gitbackup"
-GITEA_DOMAIN="gitea.some.one"
+SERVER_DOMAIN="gitea.some.one"
+
+BACKUP_USER_NAME="gitbackup"
+BACKUP_FILE_PREFIX="gitea"
 
 STORE_PATH="~/gitea-backup"
 NUMBER_OF_STORED_BACKUPS=14
 
 ENABLE_CRONJOB=true
-GITEA_BACKUP_PULL_EVENT="0 5	* * *" # every day at 05:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+BACKUP_PULL_EVENT="0 5	* * *" # every day at 05:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 
 
 ###################################################################################################
@@ -27,8 +29,8 @@ PULL_BACKUP_SCRIPT_CONTENT="
 # CONFIGURATION
 ###################################################################################################
 
-GITEA_BACKUP_NAME=${GITEA_BACKUP_NAME}
-GITEA_DOMAIN=${GITEA_DOMAIN}
+BACKUP_USER_NAME=${BACKUP_USER_NAME}
+SERVER_DOMAIN=${SERVER_DOMAIN}
 
 STORE_PATH=${STORE_PATH}
 NUMBER_OF_STORED_BACKUPS=${NUMBER_OF_STORED_BACKUPS}
@@ -67,7 +69,7 @@ rm \${TMP_FILE}
 
 
 # pull backup
-scp \${GITEA_BACKUP_NAME}@\${GITEA_DOMAIN}:persist/* \${STORE_PATH}
+scp \${BACKUP_USER_NAME}@\${SERVER_DOMAIN}:persist/* \${STORE_PATH}
 echo \"[INFO] done\"
 "
 
@@ -80,8 +82,8 @@ PUSH_BACKUP_SCRIPT_CONTENT="
 # CONFIGURATION
 ###################################################################################################
 
-GITEA_BACKUP_NAME=${GITEA_BACKUP_NAME}
-GITEA_DOMAIN=${GITEA_DOMAIN}
+BACKUP_USER_NAME=${BACKUP_USER_NAME}
+SERVER_DOMAIN=${SERVER_DOMAIN}
 
 STORE_PATH=${STORE_PATH}
 
@@ -106,15 +108,15 @@ if [ \$# -eq 0 ]; then
   
 
   # check if backup exists
-  if [[ \${BACKUP_FILE} != backup-* ]] || [[ \${BACKUP_FILE} != *.tar.gz.enc ]]; then 
+  if [[ \${BACKUP_FILE} != ${BACKUP_FILE_PREFIX}-backup-* ]] || [[ \${BACKUP_FILE}-backup-* != *.tar.gz.enc ]]; then 
     echo \"[ERROR] no backup file found\"
     exit
   fi
 
 elif [ \$# -eq 1  ]; then
 
-  # check if parameter starts with \"backup-\" and ends with \".tar.gz.enc\"
-  if [[ \$1 != backup-* ]] || [[ \$1 != *.tar.gz.enc ]] ; then 
+  # check if parameter starts with \"${BACKUP_FILE_PREFIX}-backup-\" and ends with \".tar.gz.enc\"
+  if [[ \$1 != ${BACKUP_FILE_PREFIX}-backup-* ]] || [[ \$1 != *.tar.gz.enc ]] ; then 
     echo \"[ERROR] backup name does not match backup name style\"
     exit
   fi
@@ -131,7 +133,7 @@ fi
 
 
 # push backup
-scp \${STORE_PATH}/\${BACKUP_FILE} \${GITEA_BACKUP_NAME}@\${GITEA_DOMAIN}:restore/
+scp \${STORE_PATH}/\${BACKUP_FILE} \${BACKUP_USER_NAME}@\${SERVER_DOMAIN}:restore/
 echo \"[INFO] done\"
 "
 
@@ -141,18 +143,18 @@ echo \"[INFO] done\"
 ###################################################################################################
 
 echo "[INFO] creating backup pulling file ..."
-echo "$PULL_BACKUP_SCRIPT_CONTENT" > pull-backup.sh
-chmod 700 pull-backup.sh
+echo "$PULL_BACKUP_SCRIPT_CONTENT" > ${BACKUP_FILE_PREFIX}-pull-backup.sh
+chmod 700 ${BACKUP_FILE_PREFIX}-pull-backup.sh
 
 
 echo "[INFO] creating backup pushing file ..."
-echo "$PUSH_BACKUP_SCRIPT_CONTENT" > push-backup.sh
-chmod 700 push-backup.sh
+echo "$PUSH_BACKUP_SCRIPT_CONTENT" > ${BACKUP_FILE_PREFIX}-push-backup.sh
+chmod 700 ${BACKUP_FILE_PREFIX}-push-backup.sh
 
 
 if [ ${ENABLE_CRONJOB} == true ]; then
   echo "[INFO] creating backup pulling job ..."
-  (crontab -l 2>>/dev/null; echo "${GITEA_BACKUP_PULL_EVENT}	/bin/bash $PWD/pull-backup.sh") | crontab -
+  (crontab -l 2>>/dev/null; echo "${BACKUP_PULL_EVENT}	/bin/bash ${PWD}/${BACKUP_FILE_PREFIX}-pull-backup.sh") | crontab -
 fi
 
 

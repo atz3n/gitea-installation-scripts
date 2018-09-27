@@ -13,11 +13,13 @@
 GITEA_USER_NAME="git"
 
 GITEA_VERSION="1.5.0"
-GITEA_PORT="443"
-GITEA_DOMAIN="gitea.some.one"
-#GITEA_DOMAIN=$(hostname -I | head -n1 | cut -d " " -f1)
 
-GITEA_BACKUP_NAME="gitbackup"
+SERVER_DOMAIN="gitea.some.one"
+SERVER_PORT="443"
+#SERVER_DOMAIN=$(hostname -I | head -n1 | cut -d " " -f1)
+
+BACKUP_USER_NAME="gitbackup"
+BACKUP_FILE_PREFIX="gitea"
 BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 BACKUP_KEY="dummy1234"
 
@@ -111,8 +113,8 @@ WantedBy=multi-user.target
 INITIAL_APP_INI_CONTENT="
 [server]
 PROTOCOL=https
-ROOT_URL = https://${GITEA_DOMAIN}:${GITEA_PORT}/
-HTTP_PORT = ${GITEA_PORT}
+ROOT_URL = https://${SERVER_DOMAIN}:${SERVER_PORT}/
+HTTP_PORT = ${SERVER_PORT}
 CERT_FILE = /etc/gitea/cert.pem
 KEY_FILE = /etc/gitea/key.pem
 REDIRECT_OTHER_PORT = true
@@ -123,20 +125,20 @@ PORT_TO_REDIRECT = 80
 BACKUP_SCRIPT_CONTENT="
 #!/bin/bash
 
-BACKUP_NAME=\"backup-\$(date +'%s').tar.gz\"
+BACKUP_NAME=\"${BACKUP_FILE_PREFIX}-backup-\$(date +'%s').tar.gz\"
 
 
 sqlite3 /var/lib/gitea/data/gitea.db .dump > gitea.sql
-rm -f /home/${GITEA_BACKUP_NAME}/persist/backup-*
+rm -f /home/${BACKUP_USER_NAME}/persist/${BACKUP_FILE_PREFIX}-backup-*
 
-tar -pcvzf \${BACKUP_NAME} /home/${GITEA_USER_NAME}/gitea-repositories/ gitea.sql /etc/gitea/app.ini /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
-openssl enc -aes-256-cbc -e -in \${BACKUP_NAME} -out /home/${GITEA_BACKUP_NAME}/persist/\"\${BACKUP_NAME}.enc\" -kfile backup-key.txt
+tar -pcvzf \${BACKUP_NAME} /home/${GITEA_USER_NAME}/gitea-repositories/ gitea.sql /etc/gitea/app.ini /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
+openssl enc -aes-256-cbc -e -in \${BACKUP_NAME} -out /home/${BACKUP_USER_NAME}/persist/\"\${BACKUP_NAME}.enc\" -kfile backup-key.txt
 
 rm -f gitea.sql
 rm -f \${BACKUP_NAME}
 
-chown ${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist/\"\${BACKUP_NAME}.enc\"
-chmod 400 /home/${GITEA_BACKUP_NAME}/persist/\"\${BACKUP_NAME}.enc\"
+chown ${BACKUP_USER_NAME} /home/${BACKUP_USER_NAME}/persist/\"\${BACKUP_NAME}.enc\"
+chmod 400 /home/${BACKUP_USER_NAME}/persist/\"\${BACKUP_NAME}.enc\"
 "
 
 
@@ -146,13 +148,13 @@ RESTORE_SCRIPT_CONTENT="
 echo \"[INFO] restoring backup ...\"
 
 
-cd /home/${GITEA_BACKUP_NAME}/restore/
-ENC_BACKUP_NAME=\$(find backup-*.tar.gz.enc)
+cd /home/${BACKUP_USER_NAME}/restore/
+ENC_BACKUP_NAME=\$(find ${BACKUP_FILE_PREFIX}-backup-*.tar.gz.enc)
 BACKUP_NAME=\"\${ENC_BACKUP_NAME::-4}\"
 cd ~
 
 
-openssl aes-256-cbc -d -in /home/${GITEA_BACKUP_NAME}/restore/\${ENC_BACKUP_NAME} -out \${BACKUP_NAME} -kfile backup-key.txt
+openssl aes-256-cbc -d -in /home/${BACKUP_USER_NAME}/restore/\${ENC_BACKUP_NAME} -out \${BACKUP_NAME} -kfile backup-key.txt
 
 
 mkdir tmp
@@ -163,7 +165,7 @@ cd ~
 
 mv tmp/etc/gitea/app.ini /etc/gitea/app.ini
 
-mv tmp/home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+mv tmp/home/${BACKUP_USER_NAME}/.ssh/authorized_keys /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
 
 rm -rf /home/${GITEA_USER_NAME}/gitea-repositories
 mv tmp/home/${GITEA_USER_NAME}/gitea-repositories/ /home/${GITEA_USER_NAME}/
@@ -180,7 +182,7 @@ su -c \"cd /var/lib/gitea/
 
 rm -r tmp/
 rm \${BACKUP_NAME}
-rm /home/${GITEA_BACKUP_NAME}/restore/\${ENC_BACKUP_NAME}
+rm /home/${BACKUP_USER_NAME}/restore/\${ENC_BACKUP_NAME}
 
 
 echo \"[INFO] rebooting ...\"
@@ -199,7 +201,7 @@ if ! [ \${PUB_SSH_KEY:0:7} = \"ssh-rsa\" ]; then
 elif ! [ \$# = 1 ]; then
     echo \"[ERROR] two many arguments. Surround rsa key with double quotes: \\\"<PUBLIC KEY>\\\"\"
 else
-    echo \"command=\\\"if [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-t[[:space:]]restore/.? ]] || [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-f[[:space:]]persist/.? ]]; then \\\$SSH_ORIGINAL_COMMAND ; else echo Access Denied; fi\\\",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding \${PUB_SSH_KEY}\" >> /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+    echo \"command=\\\"if [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-t[[:space:]]restore/.? ]] || [[ \\\\\\\"\\\$SSH_ORIGINAL_COMMAND\\\\\\\" =~ ^scp[[:space:]]-f[[:space:]]persist/.? ]]; then \\\$SSH_ORIGINAL_COMMAND ; else echo Access Denied; fi\\\",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding \${PUB_SSH_KEY}\" >> /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
 fi
 "
 
@@ -291,8 +293,8 @@ adduser \
    --gecos 'Git Backup Account' \
    --group \
    --disabled-password \
-   --home /home/${GITEA_BACKUP_NAME} \
-   ${GITEA_BACKUP_NAME}
+   --home /home/${BACKUP_USER_NAME} \
+   ${BACKUP_USER_NAME}
 
 
 echo "" && echo "[INFO] creating directories and setting permissions ..."
@@ -314,15 +316,15 @@ chmod 750 /var/lib/gitea/log
 chmod 770 /etc/gitea
 chmod 700 /home/${GITEA_USER_NAME}
 
-mkdir -p /home/${GITEA_BACKUP_NAME}/persist
-mkdir -p /home/${GITEA_BACKUP_NAME}/restore
+mkdir -p /home/${BACKUP_USER_NAME}/persist
+mkdir -p /home/${BACKUP_USER_NAME}/restore
 
-chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/persist
-chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/restore
+chown ${BACKUP_USER_NAME}:${BACKUP_USER_NAME} /home/${BACKUP_USER_NAME}/persist
+chown ${BACKUP_USER_NAME}:${BACKUP_USER_NAME} /home/${BACKUP_USER_NAME}/restore
 
-chmod 500 /home/${GITEA_BACKUP_NAME}/persist
-chmod 300 /home/${GITEA_BACKUP_NAME}/restore
-chmod 700 /home/${GITEA_BACKUP_NAME}
+chmod 500 /home/${BACKUP_USER_NAME}/persist
+chmod 300 /home/${BACKUP_USER_NAME}/restore
+chmod 700 /home/${BACKUP_USER_NAME}
 
 
 echo "" && echo "[INFO] copying gitea binary to global location ..."
@@ -370,12 +372,12 @@ echo "${UNATTENDED_UPGRADE_PERIODIC_SCRIPT_CONTENT}" > /etc/apt/apt.conf.d/10per
 if [ ${ENABLE_LETSENCRYPT} == true ]; then
   
     echo "" && echo "[INFO] requesting Let's Encrypt certificate ..."
-    certbot certonly -n --standalone --agree-tos --email ${LETSENCRYPT_EMAIL} -d ${GITEA_DOMAIN}
+    certbot certonly -n --standalone --agree-tos --email ${LETSENCRYPT_EMAIL} -d ${SERVER_DOMAIN}
 
     
     echo "" && echo "[INFO] creating links to certificate and key and setting permissions ..."
-    ln -s /etc/letsencrypt/live/${GITEA_DOMAIN}/fullchain.pem /etc/gitea/cert.pem
-    ln -s /etc/letsencrypt/live/${GITEA_DOMAIN}/privkey.pem /etc/gitea/key.pem
+    ln -s /etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem /etc/gitea/cert.pem
+    ln -s /etc/letsencrypt/live/${SERVER_DOMAIN}/privkey.pem /etc/gitea/key.pem
 
     chown root:git /etc/letsencrypt/live
     chmod 750 /etc/letsencrypt/live
@@ -392,7 +394,7 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
 else
 
     echo "" && echo "[INFO] creating self signed certificate ..."
-    gitea cert --host ${GITEA_DOMAIN}
+    gitea cert --host ${SERVER_DOMAIN}
 
     chown root:${GITEA_USER_NAME} key.pem
     chown root:${GITEA_USER_NAME} cert.pem
@@ -426,15 +428,15 @@ chmod 700 /home/${GITEA_USER_NAME}/.ssh
 chmod 600 /home/${GITEA_USER_NAME}/.ssh/authorized_keys
 
 
-echo "" && echo "[INFO] creating files for ssh public keys for ${GITEA_BACKUP_NAME} ..."
-mkdir -p /home/${GITEA_BACKUP_NAME}/.ssh
-echo "" > /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+echo "" && echo "[INFO] creating files for ssh public keys for ${BACKUP_USER_NAME} ..."
+mkdir -p /home/${BACKUP_USER_NAME}/.ssh
+echo "" > /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
 
-chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/.ssh
-chown ${GITEA_BACKUP_NAME}:${GITEA_BACKUP_NAME} /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+chown ${BACKUP_USER_NAME}:${BACKUP_USER_NAME} /home/${BACKUP_USER_NAME}/.ssh
+chown ${BACKUP_USER_NAME}:${BACKUP_USER_NAME} /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
 
-chmod 700 /home/${GITEA_BACKUP_NAME}/.ssh
-chmod 400 /home/${GITEA_BACKUP_NAME}/.ssh/authorized_keys
+chmod 700 /home/${BACKUP_USER_NAME}/.ssh
+chmod 400 /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
 
 
 echo "" && echo "[INFO] enabling and starting gitea service ..."
