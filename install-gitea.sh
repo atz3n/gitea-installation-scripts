@@ -20,13 +20,15 @@ SERVER_PORT="443"
 
 BACKUP_USER_NAME="gitbackup"
 BACKUP_FILE_PREFIX="gitea"
-BACKUP_EVENT="0 3	* * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
+BACKUP_EVENT="0 3   * * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 BACKUP_KEY="dummy1234"
 
 ENABLE_LETSENCRYPT=true
 LETSENCRYPT_EMAIL="dummy@dummy.com"
-LETSENCRYPT_RENEW_EVENT="30 2	1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
+LETSENCRYPT_RENEW_EVENT="30 2   1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
                                          # (Every 60 days. That's the default time range from certbot)
+
+ENABLE_FAIL2BAN=false
 
 
 ###################################################################################################
@@ -119,6 +121,26 @@ CERT_FILE = /etc/gitea/cert.pem
 KEY_FILE = /etc/gitea/key.pem
 REDIRECT_OTHER_PORT = true
 PORT_TO_REDIRECT = 80
+"
+
+
+FAIL2BAN_FILTER_FILE_CONTENT="
+[Definition]
+failregex =  .*Failed authentication attempt for .* from <HOST>
+ignoreregex =
+"
+
+
+FAIL2BAN_CONFIGURATION_FILE_CONTENT="
+[gitea]
+enabled = true
+port = http,https
+filter = gitea
+logpath = /home/git/gitea/log/gitea.log
+maxretry = 5
+findtime = 3600
+bantime = 1800
+action = iptables-allports
 "
 
 
@@ -264,6 +286,14 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
 fi
 
 
+if [ ${ENABLE_FAIL2BAN} == true ]; then
+  
+    echo "" && echo "[INFO] installing Fail2ban ..."
+    apt-get install -y fail2ban
+
+fi
+
+
 echo "" && echo "[INFO] getting gitea ..."
 wget -O gitea https://dl.gitea.io/gitea/${GITEA_VERSION}/gitea-${GITEA_VERSION}-linux-amd64
 chmod +x gitea
@@ -352,7 +382,7 @@ chmod 600 backup-key.txt
 echo "" && echo "[INFO] creating backup job ..."
 echo "${BACKUP_SCRIPT_CONTENT}" > /root/create-backup.sh
 chmod 700 /root/create-backup.sh
-(crontab -l 2> /dev/null; echo "${BACKUP_EVENT}	/bin/bash /root/create-backup.sh") | crontab -
+(crontab -l 2> /dev/null; echo "${BACKUP_EVENT} /bin/bash /root/create-backup.sh") | crontab -
 
 
 echo "" && echo "[INFO] creating backup ssh key script ..."
@@ -389,7 +419,7 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
     echo "" && echo "[INFO] creating renew certificate job"
     echo "${RENEW_CERTIFICATE_SCRIPT_CONTENT}" > /root/renew-certificate.sh
     chmod 700 /root/renew-certificate.sh
-    (crontab -l 2>> /dev/null; echo "${LETSENCRYPT_RENEW_EVENT}	/bin/bash /root/renew-certificate.sh") | crontab -
+    (crontab -l 2>> /dev/null; echo "${LETSENCRYPT_RENEW_EVENT} /bin/bash /root/renew-certificate.sh") | crontab -
 
 else
 
@@ -406,6 +436,15 @@ else
     echo "" && echo "[INFO] moving certificate and key to final detination ..."
     mv key.pem /etc/gitea/
     mv cert.pem /etc/gitea/
+
+fi
+
+
+if [ ${ENABLE_LETSENCRYPT} == true ]; then
+  
+    echo "" && echo "[INFO] configurin Fail2ban ..."
+    echo "${FAIL2BAN_FILTER_FILE_CONTENT}" | sudo tee /etc/fail2ban/filter.d/gitea.conf > /dev/null
+    echo "${FAIL2BAN_CONFIGURATION_FILE_CONTENT}" | sudo tee /etc/fail2ban/jail.d/jail.local > /dev/null
 
 fi
 
