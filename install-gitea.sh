@@ -28,7 +28,7 @@ LETSENCRYPT_EMAIL="dummy@dummy.com"
 LETSENCRYPT_RENEW_EVENT="30 2   1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
                                          # (Every 60 days. That's the default time range from certbot)
 
-ENABLE_FAIL2BAN=false
+ENABLE_FAIL2BAN=true
 
 
 ###################################################################################################
@@ -136,7 +136,7 @@ FAIL2BAN_CONFIGURATION_FILE_CONTENT="
 enabled = true
 port = http,https
 filter = gitea
-logpath = /home/git/gitea/log/gitea.log
+logpath = /var/lib/gitea/log/gitea.log
 maxretry = 5
 findtime = 3600
 bantime = 1800
@@ -289,6 +289,8 @@ fi
 if [ ${ENABLE_FAIL2BAN} == true ]; then
   
     echo "" && echo "[INFO] installing Fail2ban ..."
+    add-apt-repository -y universe
+    apt-get update -y
     apt-get install -y fail2ban
 
 fi
@@ -440,9 +442,9 @@ else
 fi
 
 
-if [ ${ENABLE_LETSENCRYPT} == true ]; then
+if [ ${ENABLE_FAIL2BAN} == true ]; then
   
-    echo "" && echo "[INFO] configurin Fail2ban ..."
+    echo "" && echo "[INFO] configuring Fail2ban ..."
     echo "${FAIL2BAN_FILTER_FILE_CONTENT}" | sudo tee /etc/fail2ban/filter.d/gitea.conf > /dev/null
     echo "${FAIL2BAN_CONFIGURATION_FILE_CONTENT}" | sudo tee /etc/fail2ban/jail.d/jail.local > /dev/null
 
