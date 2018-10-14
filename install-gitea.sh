@@ -264,6 +264,7 @@ source ~/.profile
 
 
 echo "" && echo "[INFO] updating system ..."
+apt update -y
 unattended-upgrades --debug cat /var/log/unattended-upgrades/unattended-upgrades.log
 
 
@@ -289,8 +290,6 @@ fi
 if [ ${ENABLE_FAIL2BAN} == true ]; then
   
     echo "" && echo "[INFO] installing Fail2ban ..."
-    add-apt-repository -y universe
-    apt-get update -y
     apt-get install -y fail2ban
 
 fi
