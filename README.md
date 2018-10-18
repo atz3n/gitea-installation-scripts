@@ -12,12 +12,19 @@ The backup scripts created by `install-backup-scripts.sh` are tested on an Raspb
 
 ## Server Installation
 
-1. copy `install-gitea.sh` to the root user of the server
-1. login as root via ssh
-1. make script executable `chmod 700 install-gitea.sh`
-1. execute script `./install-gitea.sh`
-1. after automatic reboot open gitea via a browser and start the initial configuration. **CAUTION**: Select SQLite database
-1. after initial configuration, change permssions of /etc/gitea and /etc/gitea/app.ini with `chmod 750 /etc/gitea && chmod 644 /etc/gitea/app.ini`
+1. Way one
+    1. copy `install-gitea.sh` to the root user of the server
+    1. login as root via ssh
+    1. make script executable `chmod 700 install-gitea.sh`
+    1. execute script `./install-gitea.sh`
+    1. after automatic reboot open gitea via a browser and start the initial configuration. **CAUTION**: Select SQLite database
+    1. after initial configuration, change permssions of /etc/gitea and /etc/gitea/app.ini with `chmod 750 /etc/gitea && chmod 644 /etc/gitea/app.ini`
+1. Way two (Works only with a Linux based system)
+    1. open `remote-install.sh` on your local machine
+    1. adapt the configuration to your needs.
+    1. execute `remote-install.sh` on your local machine. It will execute 'install-taiga.sh' on the gitea server
+    1. after automatic reboot open gitea via a browser and start the initial configuration. **CAUTION**: Select SQLite database
+    1. after initial configuration, change permssions of /etc/gitea and /etc/gitea/app.ini with `chmod 750 /etc/gitea && chmod 644 /etc/gitea/app.ini`
 
 
 ## Backups
