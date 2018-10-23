@@ -23,9 +23,11 @@ BACKUP_FILE_PREFIX="gitea"
 BACKUP_EVENT="0 3   * * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 BACKUP_KEY="dummy1234"
 
-ENABLE_LETSENCRYPT=true
+ENABLE_LETSENCRYPT=false
 LETSENCRYPT_RENEW_EVENT="30 2   1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
                                          # (Every 60 days. That's the default time range from certbot)
+
+RECREATING_DH_PARAMETER=true # strengthens security but takes a long time to generate
 
 ENABLE_FAIL2BAN=false
 FAIL2BAN_MAXRETRY=5 # number of failed logins before the user gets banned
@@ -439,6 +441,14 @@ else
     echo "" && echo "[INFO] moving certificate and key to final detination ..."
     mv key.pem /etc/gitea/
     mv cert.pem /etc/gitea/
+
+fi
+
+
+if [ ${RECREATING_DH_PARAMETER} == true ]; then
+
+    echo "" && echo "[INFO] recreating diffie hellman parameter ..."
+    sudo openssl dhparam -out /etc/ssl/dhparam.pem 4096
 
 fi
 
