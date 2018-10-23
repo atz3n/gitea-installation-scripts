@@ -23,12 +23,15 @@ BACKUP_FILE_PREFIX="gitea"
 BACKUP_EVENT="0 3   * * *" # every day at 03:00 (see https://wiki.ubuntuusers.de/Cron/ for syntax)
 BACKUP_KEY="dummy1234"
 
-ENABLE_LETSENCRYPT=true
+ENABLE_LETSENCRYPT=false
 LETSENCRYPT_EMAIL="dummy@dummy.com"
 LETSENCRYPT_RENEW_EVENT="30 2   1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
                                          # (Every 60 days. That's the default time range from certbot)
 
 ENABLE_FAIL2BAN=true
+FAIL2BAN_MAXRETRY=5 # number of failed logins before the user gets banned
+FAIL2BAN_FINDTIME=3600 # time in seconds after the counter for maxretry will be reseted
+FAIL2BAN_BANTIME=1800 # time in seconds the user gets banned
 
 
 ###################################################################################################
@@ -137,9 +140,9 @@ enabled = true
 port = http,https
 filter = gitea
 logpath = /var/lib/gitea/log/gitea.log
-maxretry = 5
-findtime = 3600
-bantime = 1800
+maxretry = ${FAIL2BAN_MAXRETRY}
+findtime = ${FAIL2BAN_FINDTIME}
+bantime = ${FAIL2BAN_BANTIME}
 action = iptables-allports
 "
 
@@ -410,10 +413,10 @@ if [ ${ENABLE_LETSENCRYPT} == true ]; then
     ln -s /etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem /etc/gitea/cert.pem
     ln -s /etc/letsencrypt/live/${SERVER_DOMAIN}/privkey.pem /etc/gitea/key.pem
 
-    chown root:git /etc/letsencrypt/live
+    chown root:${GITEA_USER_NAME} /etc/letsencrypt/live
     chmod 750 /etc/letsencrypt/live
 
-    chown root:git /etc/letsencrypt/archive
+    chown root:${GITEA_USER_NAME} /etc/letsencrypt/archive
     chmod 750 /etc/letsencrypt/archive
 
 
@@ -444,8 +447,12 @@ fi
 if [ ${ENABLE_FAIL2BAN} == true ]; then
   
     echo "" && echo "[INFO] configuring Fail2ban ..."
-    echo "${FAIL2BAN_FILTER_FILE_CONTENT}" | sudo tee /etc/fail2ban/filter.d/gitea.conf > /dev/null
-    echo "${FAIL2BAN_CONFIGURATION_FILE_CONTENT}" | sudo tee /etc/fail2ban/jail.d/jail.local > /dev/null
+    echo "${FAIL2BAN_FILTER_FILE_CONTENT}" > /etc/fail2ban/filter.d/gitea.conf
+    echo "${FAIL2BAN_CONFIGURATION_FILE_CONTENT}" > /etc/fail2ban/jail.d/jail.local
+
+    echo "" > /var/lib/gitea/log/gitea.log
+    chown ${GITEA_USER_NAME}:${GITEA_USER_NAME} /var/lib/gitea/log/gitea.log
+    chmod 640 /var/lib/gitea/log/gitea.log
 
 fi
 
