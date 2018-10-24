@@ -27,7 +27,7 @@ ENABLE_LETSENCRYPT=false
 LETSENCRYPT_RENEW_EVENT="30 2   1 */2 *" # At 02:30 on day-of-month 1 in every 2nd month.
                                          # (Every 60 days. That's the default time range from certbot)
 
-RECREATING_DH_PARAMETER=true # strengthens security but takes a long time to generate
+RECREATING_DH_PARAMETER=false # strengthens security but takes a long time to generate
 
 ENABLE_FAIL2BAN=false
 FAIL2BAN_MAXRETRY=5 # number of failed logins before the user gets banned
@@ -157,7 +157,7 @@ BACKUP_NAME=\"${BACKUP_FILE_PREFIX}-backup-\$(date +'%s').tar.gz\"
 sqlite3 /var/lib/gitea/data/gitea.db .dump > gitea.sql
 rm -f /home/${BACKUP_USER_NAME}/persist/${BACKUP_FILE_PREFIX}-backup-*
 
-tar -pcvzf \${BACKUP_NAME} /home/${GITEA_USER_NAME}/gitea-repositories/ gitea.sql /etc/gitea/app.ini /home/${BACKUP_USER_NAME}/.ssh/authorized_keys
+tar -pcvzf \${BACKUP_NAME} /home/${GITEA_USER_NAME}/gitea-repositories/ gitea.sql /etc/gitea/app.ini /home/${BACKUP_USER_NAME}/.ssh/authorized_keys /var/lib/gitea/custom/ /var/lib/gitea/public
 openssl enc -aes-256-cbc -e -in \${BACKUP_NAME} -out /home/${BACKUP_USER_NAME}/persist/\"\${BACKUP_NAME}.enc\" -kfile backup-key.txt
 
 rm -f gitea.sql
@@ -195,6 +195,12 @@ mv tmp/home/${BACKUP_USER_NAME}/.ssh/authorized_keys /home/${BACKUP_USER_NAME}/.
 
 rm -rf /home/${GITEA_USER_NAME}/gitea-repositories
 mv tmp/home/${GITEA_USER_NAME}/gitea-repositories/ /home/${GITEA_USER_NAME}/
+
+rm -rf /var/lib/gitea/custom
+mv tmp/var/lib/gitea/custom/ /var/lib/gitea/
+
+rm -rf /var/lib/gitea/public
+mv tmp/var/lib/gitea/public/ /var/lib/gitea/
 
 sqlite3 tmp/gitea.db < tmp/gitea.sql
 mv tmp/gitea.db /var/lib/gitea/data/
