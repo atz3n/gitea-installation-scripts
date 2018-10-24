@@ -5,7 +5,7 @@
 # CONFIGURATION
 ###################################################################################################
 
-SERVER_DOMAIN="gitea.some.one"
+SERVER_DOMAIN="dummy.domain"
 
 BACKUP_USER_NAME="gitbackup"
 BACKUP_FILE_PREFIX="gitea"
@@ -108,7 +108,7 @@ if [ \$# -eq 0 ]; then
   
 
   # check if backup exists
-  if [[ \${BACKUP_FILE} != ${BACKUP_FILE_PREFIX}-backup-* ]] || [[ \${BACKUP_FILE}-backup-* != *.tar.gz.enc ]]; then 
+  if [[ \${BACKUP_FILE} != ${BACKUP_FILE_PREFIX}-backup-* ]] || [[ \${BACKUP_FILE} != *.tar.gz.enc ]]; then 
     echo \"[ERROR] no backup file found\"
     exit
   fi
