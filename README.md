@@ -1,4 +1,4 @@
-# gitea-server
+# gitea-installation-scripts
 
 repository for gitea server hosting
 
